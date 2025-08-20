@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-#include<iostream>
+#include <iostream>
 #include <cstdlib>
 #include <ctime>
 
@@ -10,19 +10,14 @@ void populateRandom(int[], int);
 int partition(int[], int, int);
 void quickSort(int[], int, int);
 
-RenderWindow window(VideoMode(1200, 800), "Sorting Visualizer");
+RenderWindow window(VideoMode(1200, 900), "Sorting Visualizer");
+Color bgColor(60, 60, 60);
 
 int main() {
-    
-    const int n = 200;
-    int arr1[n];
 
-    populateRandom(arr1, n);
-    int arr2[n];
-    for (int i = 0; i < n; ++i)
-        arr2[i] = arr1[i];
-    
     Event event;
+
+    window.setFramerateLimit(60);
     
     while(window.isOpen()) {
         while (window.pollEvent(event))
@@ -30,8 +25,11 @@ int main() {
             if (event.type == Event::Closed)
                 window.close();
         }
-    }
 
+        window.clear(bgColor);
+        window.display();
+    }
+    
     return 0;
 }
 
