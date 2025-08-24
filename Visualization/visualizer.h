@@ -1,12 +1,28 @@
 #include <SFML/Graphics.hpp>
 using namespace sf;
 
-enum States {DEFAULT, COMPARE, MOVING};
+enum States {DEFAULT, SELECTED, MOVING};
 
-// A represention of an individual element in the array being sorted
-struct element {
-    short state, radius;
-    int value;
+// Base class for objects in the simulation
+class Object {
+    public:
+        Vector2f position, velocity, acceleration;
+};
+
+// Represents an individual element in the sorting visualization
+class Element : public Object {
+    private:
+        short state, radius;
+        int value;
+        CircleShape body;
+        Text text;
+    public:
+        Element();
+        Element(int, int, int, int);
+        void setValue(int v);
+        void setColor(short);
+        void move(float, float);
+        void draw(RenderWindow *);
 };
 
 class Radix {
@@ -17,8 +33,9 @@ class Radix {
         // Background color for the window
         Color bgColor;
 
-        // Font and text for displaying information
-        Font font; Text text;
+        // Text for displaying information
+        Text text;
+
     public:
         // Initializes all the variables needed for Radix Sort visualization
         Radix();
@@ -27,5 +44,5 @@ class Radix {
         ~Radix();
 
         // Main simulation loop
-        void simulate(int);
+        void simulate(int, int, int);
 };

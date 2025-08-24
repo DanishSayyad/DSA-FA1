@@ -1,8 +1,7 @@
-// Air control system with flight limit per airport
-
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <iomanip>
 
 using namespace std;
 
@@ -18,7 +17,7 @@ struct Flight {
 struct Airport {
     string airportCode;
     Flight *flightHead;
-    int flightCount; // Track number of flights
+    int flightCount;
     Airport *next;
 };
 
@@ -26,35 +25,51 @@ struct Airport {
 class ATC {
 private:
     Airport *airportHead;
-    const int MAX_FLIGHTS = 10; // Set max flights per airport
-    
-   void addFlight_FromLoad(string code, string flightnum, string dest, string status){
-   Airport *airport = findAirport(code);
-   if(!airport) return ;
+    const int MAX_FLIGHTS = 10;
 
-   Flight *f_new = new Flight{ flightnum, dest, status, NULL} ;
-   if(!airport->flightHead){
-    airport->flightHead = f_new ;
-    
-   }
-   else{
-   Flight *temp = airport->flightHead ;
+    // Helper function to check if flight exists in given airport
+    bool flightExists(Airport* airport, const string& flightNum) {
+        Flight* current = airport->flightHead;
+        while (current) {
+            if (current->flightNo == flightNum)
+                return true;
+            current = current->next;
+        }
+        return false;
+    }
 
-   while(temp->next)
-     temp = temp->next ;
-   temp->next = f_new ;
+    void addFlight_FromLoad(string code, string flightnum, string dest, string status) {
+        Airport *airport = findAirport(code);
+        if (!airport) return;
 
-   }
- airport->flightCount++ ;
+        if (flightExists(airport, flightnum)) {
+            cout << "Duplicate flight " << flightnum << " in " << code << " skipped during load.\n";
+            return;
+        }
 
- }
+        Flight *f_new = new Flight{flightnum, dest, status, NULL};
+        if (!airport->flightHead) {
+            airport->flightHead = f_new;
+        } else {
+            Flight *temp = airport->flightHead;
+            while (temp->next)
+                temp = temp->next;
+            temp->next = f_new;
+        }
+        airport->flightCount++;
+    }
+
 public:
     ATC() {
         airportHead = NULL;
     }
 
-    // Add a new airport
     void addAirport(string code) {
+        if (findAirport(code)) {
+            cout << "Airport with code " << code << " already exists.\n";
+            return;
+        }
+
         Airport *newAirport = new Airport{code, NULL, 0, NULL};
         if (!airportHead) {
             airportHead = newAirport;
@@ -67,7 +82,6 @@ public:
         cout << "Airport " << code << " added.\n";
     }
 
-    // Remove an existing airport
     void removeAirport(string code) {
         Airport *cu = airportHead, *pr = NULL;
         while (cu) {
@@ -92,7 +106,6 @@ public:
         cout << "Airport not found!\n";
     }
 
-    // Add a flight to an airport
     void addFlight(string code, string flightNum, string dest) {
         Airport *airport = findAirport(code);
         if (!airport) {
@@ -102,6 +115,11 @@ public:
 
         if (airport->flightCount >= MAX_FLIGHTS) {
             cout << "Cannot add more flights to " << code << ". Maximum limit of " << MAX_FLIGHTS << " reached.\n";
+            return;
+        }
+
+        if (flightExists(airport, flightNum)) {
+            cout << "Flight " << flightNum << " already exists in " << code << ".\n";
             return;
         }
 
@@ -115,11 +133,10 @@ public:
             temp->next = newFlight;
         }
 
-        airport->flightCount++; // Increase count
+        airport->flightCount++;
         cout << "Flight " << flightNum << " to " << dest << " added to " << code << ".\n";
     }
 
-    // Delete a flight from an airport
     void deleteFlight(string code, string flightNum) {
         Airport *airport = findAirport(code);
         if (!airport) {
@@ -137,18 +154,16 @@ public:
                 else
                     airport->flightHead = cu->next;
                 delete cu;
-                airport->flightCount--; // Decrease count
+                airport->flightCount--;
                 cout << "Flight " << flightNum << " deleted from " << code << ".\n";
                 return;
             }
-
             pr = cu;
             cu = cu->next;
         }
         cout << "Flight not found!\n";
     }
 
-    // Update a flight's destination
     void updateFlight(string code, string flightNum, string newDest) {
         Airport *airport = findAirport(code);
         if (!airport) {
@@ -167,11 +182,10 @@ public:
         cout << "Flight not found!\n";
     }
 
-    // Display all airports and flights
     void display() {
         Airport *aTemp = airportHead;
         while (aTemp) {
-            cout << "Airport: " << aTemp->airportCode
+            cout << "\nAirport: " << aTemp->airportCode
                  << " | Total Flights: " << aTemp->flightCount << "\n";
 
             Flight *fTemp = aTemp->flightHead;
@@ -189,94 +203,112 @@ public:
         }
     }
 
-   void saveTofile(const string& filename){
-     ofstream outfile(filename);
-
-     if(!outfile.is_open()){
-      cout<<"Error opening file for saving\n";
-      return ;
-   }
-
-   Airport *currentAirport = airportHead;
-
-   while(currentAirport){
-     outfile<<"AIRPORT_START\n";
-     outfile<<currentAirport->airportCode<<"\n";
-     outfile<<currentAirport->flightCount<<"\n";
-
-     Flight *currentflight = currentAirport->flightHead ;
-
-     while(currentflight){
-        outfile<<"FLIGHTS_START\n";
-        outfile<<currentflight->flightNo<<"\n";
-        outfile<<currentflight->destination<<"\n";
-        outfile<<currentflight->status<<"\n";
-        
-        currentflight = currentflight ->next;
-     }
-     currentAirport = currentAirport->next ;
-
-   }
-
-    outfile.close();
-    cout<<"Data successfully saved to :"<<filename<<endl;
-    return ;
-}
-
-void loadFromFile(const string& filename){
-    ifstream infile(filename);
-    if(!infile.is_open()){
-        cout<<"No saved data is found / file is not available\n";
-        return ;
-    }
-
-    //Clear existing data to avoid duplicates while reading file
-    while(airportHead){
-        Airport *atemp = airportHead ;
-        airportHead = atemp->next;
-
-        while(atemp->flightHead){
-            Flight *ftemp = atemp->flightHead;
-            atemp->flightHead = ftemp->next;
-            delete ftemp ;
+    void saveTofile(const string& filename) {
+        ofstream outfile(filename);
+        if (!outfile.is_open()) {
+            cout << "Error opening file for saving\n";
+            return;
         }
-       
-       delete atemp;
-    }
-    airportHead = NULL;
 
-    string line;
-    string code, flightnum, dest, status;
-    int flightcount;
+        Airport *currentAirport = airportHead;
+        while (currentAirport) {
+            outfile << "============================================================\n";
+            outfile << "Airport Code: " << currentAirport->airportCode << "\n";
+            outfile << "Total Flights: " << currentAirport->flightCount << "\n";
+            outfile << "------------------------------------------------------------\n";
+            outfile << left << setw(15) << "Flight No"
+                    << setw(25) << "Destination"
+                    << setw(15) << "Status" << "\n";
+            outfile << "------------------------------------------------------------\n";
 
-    while(getline(infile, line)){
-        if(line == "AIRPORT_START"){ //checks for delimiter
-           getline(infile, code);
-           infile>> flightcount ;
-           infile.ignore();
-
-           addAirport(code);
-
-           for(int i=0; i<flightcount ; i++){
-            getline(infile, line);
-
-            if(line == "FLIGHTS_START"){   //checks for delimiter
-                        getline(infile, flightnum);
-                        getline(infile, dest);
-                        getline(infile, status);
-                        addFlight_FromLoad(code, flightnum, dest, status);
+            Flight *currentFlight = currentAirport->flightHead;
+            if (!currentFlight) {
+                outfile << "No flights scheduled.\n";
+            } else {
+                while (currentFlight) {
+                    outfile << left << setw(15) << currentFlight->flightNo
+                            << setw(25) << currentFlight->destination
+                            << setw(15) << currentFlight->status << "\n";
+                    currentFlight = currentFlight->next;
+                }
             }
-           }
+
+            outfile << "============================================================\n\n";
+            currentAirport = currentAirport->next;
         }
-        
+
+        outfile.close();
+        cout << "Data successfully saved to: " << filename << endl;
     }
 
-    infile.close();
-    cout<<"Data successfully loaded from "<<filename<<"\n";
-    
-}
 
-    // Find airport by code
+    void loadFromFile(const string& filename) {
+        ifstream infile(filename);
+        if (!infile.is_open()) {
+            cout << "No saved data is found / file is not available\n";
+            return;
+        }
+
+        // Clear existing data
+        while (airportHead) {
+            Airport *atemp = airportHead;
+            airportHead = atemp->next;
+            while (atemp->flightHead) {
+                Flight *ftemp = atemp->flightHead;
+                atemp->flightHead = ftemp->next;
+                delete ftemp;
+            }
+            delete atemp;
+        }
+
+        airportHead = NULL;
+
+        string line, code, flightnum, dest, status;
+        int flightcount;
+
+        // Modified parsing logic to read file format generated by saveTofile
+        while (getline(infile, line)) {
+            if (line.find("Airport Code:") != string::npos) {
+                code = line.substr(line.find(":") + 2);
+
+                getline(infile, line); // Total Flights: X
+                flightcount = stoi(line.substr(line.find(":") + 2));
+
+                // Skip separator lines and headers
+                getline(infile, line); // separator
+                getline(infile, line); // headers
+                getline(infile, line); // separator
+
+                addAirport(code);
+
+                if (flightcount > 0) {
+                    for (int i = 0; i < flightcount; i++) {
+                        if (!getline(infile, line)) break;
+
+                        if (line == "No flights scheduled.") {
+                            break;  // No flights here
+                        }
+
+                        // Parsing flight info lines - flightNo, destination, status by fixed widths
+                        string flightNo = line.substr(0,15);
+                        string destination = line.substr(15,25);
+                        string status = line.substr(40);
+
+                        // Trim trailing spaces
+                        flightNo.erase(flightNo.find_last_not_of(" \n\r\t")+1);
+                        destination.erase(destination.find_last_not_of(" \n\r\t")+1);
+                        status.erase(status.find_last_not_of(" \n\r\t")+1);
+
+                        addFlight_FromLoad(code, flightNo, destination, status);
+                    }
+                }
+            }
+        }
+
+        infile.close();
+        cout << "Data successfully loaded from " << filename << "\n";
+    }
+
     Airport *findAirport(string code) {
         Airport *temp = airportHead;
         while (temp) {
@@ -287,7 +319,6 @@ void loadFromFile(const string& filename){
         return NULL;
     }
 
-    // Destructor to clean up
     ~ATC() {
         while (airportHead) {
             Airport *aTemp = airportHead;
@@ -309,6 +340,7 @@ int main() {
     int choice;
     string code, flightNum, dest;
     string filename = "atc_data.txt";
+
     do {
         cout << "\n--- Air Control Menu ---\n";
         cout << "1. Add Airport\n";
@@ -317,8 +349,8 @@ int main() {
         cout << "4. Departing Flight\n";
         cout << "5. Update Flight\n";
         cout << "6. Display All\n";
-        cout <<  "7.Save to file\n";
-        cout <<  "8.Load from file\n";
+        cout << "7. Save to file\n";
+        cout << "8. Load from file\n";
         cout << "0. Exit\n";
         cout << "Enter choice: ";
         cin >> choice;
@@ -362,21 +394,20 @@ int main() {
             case 6:
                 control.display();
                 break;
-            
-             case 7:
-               control.saveTofile(filename);
-               break;
+            case 7:
+                control.saveTofile(filename);
+                break;
             case 8:
-               control.loadFromFile(filename);
-               break;
+                control.loadFromFile(filename);
+                break;
             case 0:
                 cout << "Exiting...\n";
                 break;
             default:
                 cout << "Invalid choice!\n";
         }
+
     } while (choice != 0);
 
     return 0;
 }
-

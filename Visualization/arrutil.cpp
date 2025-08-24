@@ -7,9 +7,13 @@ void swap(int &a, int &b) {
     b = temp;
 }
 
-void populateRandom(int arr[], int n) {
+int randomInt(int min, int max) {
+    return rand() % (max - min + 1) + min;
+}
+
+void populateRandom(int arr[], int n, int min, int max) {
     srand(static_cast<unsigned int>(time(0)));
     for (int i = 0; i < n; ++i) {
-        arr[i] = rand() % (n + 1);
+        arr[i] = randomInt(min, max);
     }
 }
